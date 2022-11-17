@@ -2426,6 +2426,7 @@ class Shipment extends Page
                     $awb = $this->dhl->create_awb(array(
                         'payee' => $payee,
                         'accountnumber' => $accno,
+                        'shipperid' => $ship['PROP'],
                         'service' => $product,
                         'date' => $ship['DELIVERYAGENT_SHIPPINGDATE'],
                         'declaredvalue' => $this->arg('DECLAREDVALUE'),
