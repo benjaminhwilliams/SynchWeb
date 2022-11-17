@@ -172,10 +172,7 @@ class DHL
         $shipment->Consignee->Contact->PhoneNumber = $options['receiver']['phone'];
         $shipment->Consignee->Contact->Email = $options['receiver']['email'];
 
-
         $shipment->Reference->ReferenceID = $options['shipperid'];
-
-        $shipment->ShipmentDetails->NumberOfPieces = sizeof($options['pieces']);
 
         $shipment->ShipmentDetails->WeightUnit = 'K';
         $shipment->ShipmentDetails->GlobalProductCode = $options['service'];
