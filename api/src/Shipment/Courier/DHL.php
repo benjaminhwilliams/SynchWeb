@@ -159,7 +159,7 @@ class DHL
 
         $shipment->Consignee->CompanyName = $options['receiver']['company'];
 
-        $reciever_address_lines = explode(PHP_EOL, $options['receiver']['address']);
+        $reciever_address_lines = explode(PHP_EOL, rtrim($options['receiver']['address']));
         if (isset($reciever_address_lines[0])) $shipment->Consignee->addAddressLine1($reciever_address_lines[0]);
         if (isset($reciever_address_lines[1])) $shipment->Consignee->addAddressLine2($reciever_address_lines[1]);
         if (isset($reciever_address_lines[2])) $shipment->Consignee->addAddressLine3($reciever_address_lines[2]);
@@ -199,7 +199,7 @@ class DHL
 
         $shipment->Shipper->CompanyName = $options['sender']['company'];
 
-        $shipper_address_lines = explode(PHP_EOL, $options['sender']['address']);
+        $shipper_address_lines = explode(PHP_EOL, rtrim($options['sender']['address']));
         if (isset($shipper_address_lines[0])) $shipment->Shipper->addAddressLine1($shipper_address_lines[0]);
         if (isset($shipper_address_lines[1])) $shipment->Shipper->addAddressLine2($shipper_address_lines[1]);
         if (isset($shipper_address_lines[2])) $shipment->Shipper->addAddressLine3($shipper_address_lines[2]);
