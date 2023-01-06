@@ -120,6 +120,13 @@ define(['marionette', 'views/form',
             var today = (d.getDate() < 10 ? '0'+d.getDate() : d.getDate()) + '-' + (d.getMonth() < 9 ? '0'+(d.getMonth()+1) : d.getMonth()+1) + '-' + d.getFullYear()
             this.$el.find('input[name=DELIVERYAGENT_SHIPPINGDATE]').val(today)
             this.$el.find('.facilityCourier').hide()
+            
+            proposal_code = app.proposal.get('PROPOSALCODE')
+            industrial_codes = ['in', 'sw']
+            industrial_visit = industrial_codes.includes(app.prop.slice(0,2))
+            if (industrial_visit) {
+                this.ui.facc.hide()
+            }
 
             if (this.shipping.get('TERMSACCEPTED') == 0) {
                 this.ui.courier.val(this.shipping.get('DELIVERYAGENT_AGENTNAME'))
@@ -128,7 +135,7 @@ define(['marionette', 'views/form',
                     this.ui.courier.attr('disabled', true)
                     this.ui.accountNumber.attr('disabled', true)
                 }
-                this.model.shipmentHasAgentCode = true
+                this.model.courierDetailsRequired = true
             }
             $.when.apply($, this.ready).done(this.doOnRender.bind(this))
         },
@@ -226,7 +233,7 @@ define(['marionette', 'views/form',
             this.listenTo(terms, 'terms:accepted', this.termsAccepted, this)
             if (!this.terms.get('ACCEPTED')) app.dialog.show(terms)
             return false
-        }, 
+        },
         
         toggleCourierAccountEditing: function(event) {
             if (event.target.checked) {
@@ -245,6 +252,7 @@ define(['marionette', 'views/form',
             this.ui.facc.hide()
             this.ui.courierDetails.hide()
             this.ui.facilityCourier.show()
+            this.model.courierDetailsRequired = false
         }
     })
 
