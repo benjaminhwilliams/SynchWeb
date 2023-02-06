@@ -17,6 +17,7 @@ class BigEPPhasing extends DownstreamPlugin {
                 $this->process['PARAMETERS']['program_id']
             );
             if ($integrator) {
+                $dat["program_id"] = $this->process['PARAMETERS']['program_id'];
                 $dat['PARENTAUTOPROCPROGRAM'] =
                     $integrator['PROCESSINGPROGRAMS'];
                 $dat['PARENTAUTOPROCPROGRAMID'] =

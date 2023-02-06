@@ -18,7 +18,8 @@
         "Dimple": 0,
         "MrBUMP": 0,
         "Big EP/XDS": 0,
-        "Big EP/DIALS": 0
+        "Big EP/DIALS": 0,
+        "ANODE": 0
       },
       "XrayCentring": 0
     }
@@ -42,7 +43,8 @@
         "Dimple": 0,
         "MrBUMP": 0,
         "Big EP/XDS": 0,
-        "Big EP/DIALS": 0
+        "Big EP/DIALS": 0,
+        "ANODE": 0
       },
       "XrayCentring": 0
     }

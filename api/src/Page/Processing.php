@@ -513,6 +513,7 @@ class Processing extends Page {
     }
 
     function _get_downstreams($dcid = null, $aid = null) {
+
         global $downstream_filter;
         $filter = $downstream_filter ? implode("','", $downstream_filter) : '';
 
@@ -529,14 +530,16 @@ class Processing extends Page {
             array_push($args, $aid);
         }
 
+
         $downstreams = $this->db->pq(
             "SELECT app.autoprocprogramid, app.processingprograms, pj.automatic, 
                     app.processingstatus, app.processingmessage,
                     app.processingstarttime, app.processingendtime, pj.recipe, pj.comments as processingcomments,
                     dc.imageprefix as dcimageprefix, dc.imagedirectory as dcimagedirectory, 
                     CONCAT(CONCAT(CONCAT(p.proposalcode, p.proposalnumber), '-'), s.visit_number) as visit,
-                    GROUP_CONCAT(CONCAT(pjp.parameterkey, '=', pjp.parametervalue)) as parameters
-                FROM datacollection dc 
+                    GROUP_CONCAT(CONCAT(pjp.parameterkey, '=', pjp.parametervalue)) as parameters,
+                    mr.mxmrrunid
+                FROM datacollection dc
                 INNER JOIN datacollectiongroup dcg ON dcg.datacollectiongroupid = dc.datacollectiongroupid
                 INNER JOIN processingjob pj ON pj.datacollectionid = dc.datacollectionid
                 LEFT OUTER JOIN processingjobparameter pjp ON pj.processingjobid = pjp.processingjobid
@@ -544,11 +547,15 @@ class Processing extends Page {
                 LEFT OUTER JOIN autoprocintegration api ON api.autoprocprogramid = app.autoprocprogramid
                 INNER JOIN blsession s ON s.sessionid = dcg.sessionid
                 INNER JOIN proposal p ON p.proposalid = s.proposalid
+                LEFT OUTER JOIN mxmrrun mr ON mr.autoprocprogramid = app.autoprocprogramid
                 WHERE api.autoprocintegrationid IS NULL AND p.proposalid=:1 $where
                     AND app.processingprograms NOT IN ('$filter')
                 GROUP BY pj.processingjobid",
             $args
         );
+
+       
+
 
         foreach ($downstreams as &$downstream) {
             $params = array();
@@ -561,6 +568,48 @@ class Processing extends Page {
             }
             $downstream['PARAMETERS'] = $params;
         }
+
+
+
+         // attach anode data results
+         $anode_records = array();
+         foreach ($downstreams as &$downstream) {
+             if ($downstream["PROCESSINGPROGRAMS"] == 'dimple'){
+                 $anode_record = array(
+                    "AUTOPROCPROGRAMID" => $downstream['AUTOPROCPROGRAMID'] + 1, // +1 because it having the same one as dimple screws up the front end
+                    "PROCESSINGPROGRAMS" => "ANODE",
+                    "PROCESSINGSTATUS" => "1",
+                    "PARAMETERS" => array(
+                    ),
+                );
+                $mxmrrunid = $downstream['MXMRRUNID'];
+                $mxmrrunblobs = $this->db->pq(
+                     "SELECT * FROM MXMRRunBlob mb WHERE mb.mxmrrunid=$mxmrrunid AND mb.mapType = 'anomalous'"
+                 );
+                 $anode_record["PARAMETERS"]["MXMRRUNBLOBS"] = array();
+                 foreach ($mxmrrunblobs as &$mxmrrunblob) {
+                        array_push(
+                            $anode_record["PARAMETERS"]["MXMRRUNBLOBS"],
+                            array(
+                                "x" => $mxmrrunblob["X"],
+                                "y" => $mxmrrunblob["Y"],
+                                "z" => $mxmrrunblob["Z"],
+                                "Height" => $mxmrrunblob["HEIGHT"],
+                                "Site Occupancy Factor" => $mxmrrunblob["OCCUPANCY"],
+                                "Distance to nearest atom" => $mxmrrunblob["NEARESTATOMDISTANCE"],
+                                "Nearest Atom" => $mxmrrunblob["NEARESTATOMNAME"]
+                            )
+                        );
+                 }
+                 $anode_record["images"] = array(
+                    1 => "/dls/i03/data/2014/cm4950-4/processed/2014-11-11/fake162143/Y220C_84_1_M8S12_1_/fast_dp/dimple/blob1v1.png"
+                 );
+                 array_push($anode_records, $anode_record);
+             }
+         }
+ 
+     
+         $downstreams = array_merge($downstreams, $anode_records);         
 
         if ($aid) {
             if (sizeof($downstreams)) {
@@ -576,7 +625,7 @@ class Processing extends Page {
      *  All zocalo ProcessingJob results, excluding rows with integration/screening
      * @param integer $id DataCollectionId
      */
-    function _downstream($id) {
+    function _downstream($id) {    
         $downstreams = $this->_get_downstreams($id);
 
         $msg_tmp = $this->db->pq(
@@ -589,6 +638,7 @@ class Processing extends Page {
             array($id)
         );
 
+
         $messages = array();
         foreach ($msg_tmp as $m) {
             if (!array_key_exists($m['AUTOPROCPROGRAMID'], $messages)) {
@@ -600,6 +650,7 @@ class Processing extends Page {
         $ds = new DownstreamProcessing($this->db, $this);
 
         $results = array();
+
         foreach ($downstreams as $downstream) {
             $downstream['MESSAGES'] = array_key_exists(
                 $downstream['AUTOPROCPROGRAMID'],
@@ -607,7 +658,7 @@ class Processing extends Page {
             )
                 ? $messages[$downstream['AUTOPROCPROGRAMID']]
                 : array();
-
+        
             $result = $ds->generate(
                 strtolower($downstream["PROCESSINGPROGRAMS"]),
                 $downstream["AUTOPROCPROGRAMID"],
@@ -617,6 +668,8 @@ class Processing extends Page {
                 array_push($results, $result->legacy());
             }
         }
+
+
 
         $this->_output($results);
     }

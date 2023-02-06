@@ -7,11 +7,12 @@ define(['backbone', 'marionette',
     'modules/dc/views/dimple',
     'modules/dc/views/mrbump',
     'modules/dc/views/bigep',
-    'templates/dc/downstreamerror.html'
+    'templates/dc/downstreamerror.html',
+    'modules/dc/views/ANODE',
 
     ], function(Backbone, Marionette, TabView, DownStreams, DownstreamWrapper, 
         TableView, 
-        FastEP, DIMPLE, MrBUMP, BigEP, downstreamerror) {
+        FastEP, DIMPLE, MrBUMP, BigEP, downstreamerror, ANODE) {
 
     var DownstreamsCollection = Backbone.Collection.extend()
 
@@ -57,6 +58,7 @@ define(['backbone', 'marionette',
             var types = {
                 'Fast EP': FastEP,
                 'Dimple': DIMPLE,
+                'anode': ANODE,
                 'MrBUMP': MrBUMP,
                 'Autobuild': BigEP,
                 'Crank2': BigEP,

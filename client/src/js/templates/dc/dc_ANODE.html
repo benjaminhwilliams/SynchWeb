@@ -1,0 +1,36 @@
+<div>
+    <figure class="pending">
+            <img class="map_figure" alt="" />
+    </figure>
+
+    <div class="plot_ANODE"></div>
+
+    <table class="ANODEstats">
+        <% if (PROCESS.PARAMETERS.MXMRRUNBLOBS.length) { %>
+            <tr>
+                <td>x</td>
+                <td>y</td>
+                <td>z</td>
+                <td>Height</td>
+                <td>SOF</td>
+                <td>Distance to Nearest Atom</td>
+                <td>Nearest Atom</td>
+            </tr>
+            <% _.each(PROCESS.PARAMETERS.MXMRRUNBLOBS, function(r, i) { %>
+            <tr>
+                <% _.each(r, function(j) { %>
+                <td><%-j%></td>
+                <% }) %>
+            </tr>
+            <% }) %>
+        <% } else { %>
+            <tr>
+                <td>ANODE Data</td>
+            </tr>
+            <tr>
+                <td>No data available</td>
+            </tr>
+        <% } %>
+    </table>
+    
+</div>
