@@ -19,6 +19,7 @@ define(['backbone.paginator', 'modules/shipment/models/containerregistry', 'util
         parseRecords: function(r, options) {
             return r.data
         },
+        
 
     }))
 })

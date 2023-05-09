@@ -1,19 +1,16 @@
 define(['marionette',
     'backbone',
-    'modules/shipment/collections/distinctproteins',
 
     'models/sample',
     'collections/samples',
     'modules/shipment/views/puck',
     'modules/shipment/views/sampletable',
 
-    'modules/shipment/collections/containerregistry',
-    'modules/shipment/collections/containerhistory',
+    'modules/shipment/collections/containercollective',
 
     'modules/shipment/collections/platetypes',
     'modules/shipment/views/plate',
 
-    'collections/processingpipelines',
     'collections/users',
 
     'views/table',
@@ -23,19 +20,16 @@ define(['marionette',
     'utils/editable',
     'templates/shipment/container.html'], function(Marionette,
     Backbone,
-    DistinctProteins,
     Sample,
     Samples,
     PuckView,
     SampleTableView,
 
-    ContainerRegistry,
-    ContainerHistory,
+    ContainerCollective,
 
     PlateTypes,
     PlateView,
 
-    ProcessingPipelines,
     Users,
 
     TableView,
@@ -79,36 +73,52 @@ define(['marionette',
                                                 : this.ui.extrastate.addClass('fa-plus').removeClass('fa-minus')
         },
 
-        createSamples: function() {
-            this.samples = new Samples(null, { state: { pageSize: 9999 } })
-        },
-
         initialize: function(options) {
             var self = this
-            this.createSamples()
-            this.samples.queryParams.cid = options.model.get('CONTAINERID')
-            this._ready = this.samples.fetch({ data: {'sort_by': 'POSITION' } }).done(function() {
-                console.log('samples')
-                var total = _.map(_.range(1, parseInt(self.model.get('CAPACITY'))+1), function(e) { return e.toString() })
-                var diff = _.difference(total, self.samples.pluck('LOCATION'))
+
+            this.containercollective = new ContainerCollective()
+            this.containercollective.queryParams.shipment_containers_registry_cid = this.model.get('CONTAINERID')
+            if (app.options.get('valid_components') && !app.staff) {
+                this.containercollective.queryParams.sample_proteins_distinct_external = 1
+            }
+            this.containercollective.queryParams.shipment_containers_registry_page = 1;
+            this.containercollective.queryParams.shipment_containers_registry_per_page = 10;
+
+            this.containercollective.queryParams.shipment_containers_history_cid = this.model.get('CONTAINERID')
+            this.containercollective.queryParams.shipment_containers_history_page = 1;
+            this.containercollective.queryParams.shipment_containers_history_per_page = 10;
+
+            this.containercollective.queryParams.sample_cid = options.model.get('CONTAINERID')
+            this.containercollective.queryParams.sample_sort_by = 'POSITION'
+            this.containercollective.queryParams.sample_page = 1
+            this.containercollective.queryParams.sample_per_page = 9999
+
+            this.containercollective.queryParams.processing_pipelines_category= 'optional'
+            this.containercollective.queryParams.processing_pipelines_status = 'processing'
+
+            this.containercollective.fetch().done(function() {
+                // deal with samples
+                var samples_total = _.map(_.range(1, parseInt(self.model.get('CAPACITY'))+1), function(e) { return e.toString() })
+                var diff = _.difference(samples_total, self.containercollective.samples.pluck('LOCATION'))
                 _.each(diff, function(l) {
-                    self.samples.add(new Sample({ LOCATION: l.toString(), CRYSTALID: -1, PROTEINID: -1, CONTAINERID: options.model.get('CONTAINERID'), new: true }))
+                    self.containercollective.samples.add(new Sample({ LOCATION: l.toString(), CRYSTALID: -1, PROTEINID: -1, CONTAINERID: options.model.get('CONTAINERID'), new: true }))
                 })
+
+                // deal with processing pipelines
+                var opts = self.containercollective.processing_pipelines.kv()
+                opts[''] = '-'
+                self.edit.create('PROCESSINGPIPELINEID', 'select', { data: opts })
             })
 
-            this.proteins = new DistinctProteins()
-            if (app.options.get('valid_components') && !app.staff) {
-                this.proteins.queryParams.external = 1
-            }
-            this.proteins.fetch()
+            this.samples = this.containercollective.samples;
 
-            this.containerregistry = new ContainerRegistry(null, { state: { pageSize: 9999 }})
+            this.proteins = this.containercollective.distinctProteins
 
-            this.history = new ContainerHistory()
-            this.history.queryParams.cid = this.model.get('CONTAINERID')
-            this.history.fetch()
+            this.containerregistry = this.containercollective.containerRegistry
 
-            this.processing_pipelines = new ProcessingPipelines()
+            this.history = this.containercollective.containerHistory;
+
+            this.processing_pipelines = this.containercollective.processing_pipelines;
 
             // We need users in case we want to edit the container owner
             this.users = new Users(null, { state: { pageSize: 9999 }})
@@ -129,13 +139,7 @@ define(['marionette',
             this.edit = edit
 
             var self = this
-            this.processing_pipelines.queryParams.pipelinestatus = 'optional'
-            this.processing_pipelines.queryParams.category = 'processing'
-            this.processing_pipelines.fetch().done(function() {
-                var opts = self.processing_pipelines.kv()
-                opts[''] = '-'
-                edit.create('PROCESSINGPIPELINEID', 'select', { data: opts })
-            })
+            
 
             var columns = [
                 { name: 'BLTIMESTAMP', label: 'Date', cell: 'string', editable: false },
