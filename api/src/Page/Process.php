@@ -422,5 +422,14 @@ class Process extends Page
         $retVal = array('total' => $total,
                         'data' => $rows);
         $this->_output($retVal);
+        return $retVal;
+    }
+
+    function _get_pipelines($prop, $status, $category){
+        $this->proposalid = $proposalid;
+        $this->args['prop'] = $prop;
+        $this->args['status'] = $status;
+        $this->args['category'] = $category;
+        return $this->_pipelines();
     }
 }

@@ -1219,13 +1219,28 @@ class Sample extends Page
         }
 
         if ($this->has_arg('sid')) {
-            if (sizeof($rows))
+            if (sizeof($rows)) {
                 $this->_output($rows[0]);
-            else
+                return $rows[0];
+            }
+            else {
                 $this->_error('No such sample');
+                return 'No such sample';
+            }
         } else {
             $this->_output(array('total' => $tot, 'data' => $rows));
+            return array('total' => $tot, 'data' => $rows);
         }
+    }
+
+    function _get_samples($proposalid, $prop, $cid, $page, $per_page, $sort_by){
+        $this->proposalid = $proposalid;
+        $this->args['prop'] = $prop;
+        $this->args['cid'] = $cid;
+        $this->args['page'] = $page;
+        $this->args['per_page'] = $per_page;
+        $this->args['sort_by'] = $sort_by;
+        return $this->_samples();
     }
 
     function _update_sample_full()
@@ -1815,9 +1830,15 @@ class Sample extends Page
               ORDER BY lower(pr.acronym)", $args);
 
         $this->_output($rows);
+        return $rows;
     }
 
-
+    function _get_disinct_proteins($prop)
+    {
+        $this->proposalid = $prop;
+        $this->args['prop'] = $prop;
+        return $this->_disinct_proteins();
+    }
 
     # ------------------------------------------------------------------------
     # Update a particular field for a protein
@@ -3036,9 +3057,15 @@ class Sample extends Page
         }
 
         if ($this->has_arg('SPACEGROUPID'))
+        {
             $this->_output($rows[0]);
+            return $rows[0];
+        }
         else
+        {
             $this->_output(array('total' => count($rows), 'data' => $rows));
+            return array('total' => count($rows), 'data' => $rows);
+        }
     }
 
     function _sample_groups_samples_by_container_main_query($with_fields, $result_select_fields)

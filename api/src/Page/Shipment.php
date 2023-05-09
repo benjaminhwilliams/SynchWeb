@@ -2050,6 +2050,8 @@ class Shipment extends Page
               INNER JOIN dewar d ON d.dewarid = c.dewarid 
               INNER JOIN shipping s ON s.shippingid = d.shippingid 
               INNER JOIN proposal p ON p.proposalid = s.proposalid WHERE $where", $args);
+
+
         $tot = intval($tot[0]['TOT']);
 
         $pp = $this->has_arg('per_page') ? $this->arg('per_page') : 15;
@@ -2070,8 +2072,20 @@ class Shipment extends Page
               INNER JOIN proposal p ON p.proposalid = s.proposalid 
               LEFT OUTER JOIN blsession b ON b.sessionid = d.firstexperimentid
               WHERE $where ORDER BY h.bltimestamp DESC", $args);
+        
+
 
         $this->_output(array('total' => $tot, 'data' => $rows));
+        return array(array('total' => $tot, 'data' => $rows));
+    }
+
+    function _get_container_history($proposalid, $prop, $page, $per_page, $cid){
+        $this->proposalid = $proposalid;
+        $this->args['prop'] = $prop;
+        $this->args['page'] = $page;
+        $this->args['per_page'] = $per_page;
+        $this->args['cid'] = $cid;
+        return $this->_container_history()[0];
     }
 
 
@@ -2232,15 +2246,28 @@ class Shipment extends Page
               ORDER BY $order", $args);
 
         if ($this->has_arg('CONTAINERREGISTRYID')) {
-            if (sizeof($rows))
+            if (sizeof($rows)){
                 $this->_output($rows[0]);
-            else
+                return $rows[0];
+            }
+            else {
                 $this->_error('No such container');
-        } else
+            }
+        } else {
             $this->_output(array('total' => $tot, 'data' => $rows));
+            return array('total' => $tot, 'data' => $rows);
+        }
     }
 
-
+    function _get_container_registry($proposalid, $prop, $page, $per_page, $cid){
+        $this->proposalid = $proposalid;
+        $this->args['prop'] = $prop;
+        $this->args['page'] = $page;
+        $this->args['per_page'] = $per_page;
+        $this->args['cid'] = $cid;
+        return $this->_container_registry();
+    }
+    
     function _add_container_registry()
     {
         if (!$this->staff)
