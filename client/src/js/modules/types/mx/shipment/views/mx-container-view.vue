@@ -80,7 +80,14 @@
                 <a @click="onUnQueueContainer" class="tw-cursor-pointer button unqueue"><i class="fa fa-times"></i> Unqueue</a>
               </span>
               <span v-else>
-                <a @click="onQueueContainer" class="tw-cursor-pointer button queue"><i class="fa fa-plus"></i> Queue</a> this container for Auto Collect
+                <span v-if="containerQueueError">
+                  There was an error submitting the container to the queue. Please fix any errors in the samples table.
+                  <a @click="onTryAgainQueueContainer" class="tw-cursor-pointer button tryagainqueue"><i class="fa fa-check"></i> Try again</a>
+                  <a @click="onCancelQueueContainer" class="tw-cursor-pointer button cancelqueue"><i class="fa fa-times"></i> Cancel</a>
+                </span>
+                <span v-else>
+                  <a @click="onQueueContainer" class="tw-cursor-pointer button queue"><i class="fa fa-plus"></i> Queue</a> this container for Auto Collect
+                </span>
               </span>
             </li>
 
@@ -104,6 +111,7 @@
 
         <div class="puck tw-w-2/3" title="Click to jump to a position in the puck">
           <valid-container-graphic
+            class="tw-border-l tw-border-gray-500"
             :containerType="containerType"
             :samples="samples"
             :valid-samples="validSamples"
@@ -183,7 +191,6 @@ import MxPuckSamplesTable from 'modules/types/mx/samples/mx-puck-samples-table.v
 import TableComponent from 'app/components/table.vue'
 import ValidContainerGraphic from 'modules/types/mx/samples/valid-container-graphic.vue'
 
-
 export default {
   name: 'mx-container-view',
   mixins: [ContainerMixin],
@@ -239,6 +246,8 @@ export default {
       },
       currentModal: 'queueContainer',
       containerQueueId: null,
+      QUEUEFORUDC: null,
+      containerQueueError: null,
       autoCollectMessage: '',
       sampleLocation: 0,
 
@@ -281,10 +290,10 @@ export default {
       this.container = Object.assign({}, this.containerModel.toJSON())
       this.containerId = this.containerModel.get('CONTAINERID')
       this.containerQueueId = this.containerModel.get('CONTAINERQUEUEID')
+      if (this.containerQueueId) this.QUEUEFORUDC = true
     },
     async loadSampleGroupInformation() {
       await this.getSampleGroups()
-      await this.fetchSampleGroupSamples()
 
       this.samplesCollection = new Samples(null, { state: { pageSize: 9999 } })
       this.samplesCollection.queryParams.cid = this.containerId
@@ -328,34 +337,48 @@ export default {
       const result = await this.$store.dispatch('getCollection', collection)
 
       if (result) {
-        this.resetSamples(this.container.CAPACITY)
+        await this.resetSamples(this.container.CAPACITY)
       }
     },
     // Reset Backbone Samples Collection
-    resetSamples(capacity) {
+    async resetSamples(capacity) {
       this.$store.commit('samples/reset', capacity)
+      const samples = this.samplesCollection.toJSON()
 
-      this.samplesCollection.each((s) => {
+      for (let sample of samples) {
         let status = '';
         // Setting the status of the sample based on one of the following values
         const statusList = ['R', 'SC', 'AI', 'GR', 'ES', 'XM', 'XS', 'DC', 'AP']
         statusList.forEach(t => {
-          if (Number(s.get(t)) > 0) status = t
+          if (Number(sample[t]) > 0) status = t
         })
-        s.set({ STATUS: status })
-        const payload = this.populateInitialSampleGroupValue(s.toJSON())
+        sample['STATUS'] = status
+        const payload = await this.populateInitialSampleGroupValue(sample)
         this.$store.commit('samples/setSample', {
-          index: Number(s.get('LOCATION')) - 1,
+          index: Number(sample['LOCATION']) - 1,
           data: { ...payload, VALID: 1 }
         })
+
+      }
+      this.$nextTick(() => {
+        this.$refs.containerForm.reset()
       })
     },
     onContainerCellClicked: function (location) {
       this.sampleLocation = location - 1
     },
     onQueueContainer() {
+      this.QUEUEFORUDC = true
       this.currentModal = 'queueContainer'
       this.displayQueueModal = true
+    },
+    onTryAgainQueueContainer() {
+      this.currentModal = 'queueContainer'
+      this.displayQueueModal = true
+    },
+    onCancelQueueContainer() {
+      this.QUEUEFORUDC = false
+      this.containerQueueError = false
     },
     onUnQueueContainer() {
       this.currentModal = 'unQueueContainer'
@@ -375,6 +398,17 @@ export default {
     async queueContainer() {
       try {
         this.displayQueueModal = false
+        const validated = await this.$refs.containerForm.validate()
+        if(!validated){
+          this.containerQueueError = true
+          this.$store.commit('notifications/addNotification', {
+            title: 'Error',
+            message: 'Unable to add container to UDC queue, please check fields in sample table',
+            level: 'error'
+          })
+          return
+        }
+        this.containerQueueError = false
         const response = await this.toggleContainerQueue(true, this.containerId)
         this.$emit('update-container-state', {
           CONTAINERQUEUEID: response.get('CONTAINERQUEUEID'),
@@ -396,6 +430,7 @@ export default {
     },
     async unQueueContainer() {
       try {
+        this.QUEUEFORUDC = false
         this.displayQueueModal = false
         await this.toggleContainerQueue(false, this.containerId)
         this.$emit('update-container-state', { CONTAINERQUEUEID: null })
@@ -469,18 +504,6 @@ export default {
         })
         this.$refs.containerForm.reset()
       }
-    },
-    populateInitialSampleGroupValue(sample) {
-      const sampleGroupsWithSample = this.sampleGroupSamples.filter(item => item['BLSAMPLEID'] === sample['BLSAMPLEID'])
-      let matchingSampleGroup = {}
-      if (sample['SAMPLEGROUP']) {
-        matchingSampleGroup = sampleGroupsWithSample.find(item => Number(item['BLSAMPLEGROUPID']) === Number(sample['SAMPLEGROUP']))
-      } else {
-        matchingSampleGroup = sampleGroupsWithSample[0]
-      }
-
-      sample.INITIALSAMPLEGROUP = matchingSampleGroup ? matchingSampleGroup['BLSAMPLEGROUPID'] : ''
-      return sample
     },
     updateEditingSampleLocation(value) {
       this.editingSampleLocation = value
